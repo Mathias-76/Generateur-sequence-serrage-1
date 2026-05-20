@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur de Séquence de Serrage</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #252525;
+    --border: #2e2e2e;
+    --accent: #e8d5a3;
+    --accent2: #c4a265;
+    --text: #f0ece4;
+    --muted: #6b6560;
+    --q1: #4a7c6f;
+    --q2: #4a6b7c;
+    --q3: #7c4a6b;
+    --q4: #7c6a4a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,213,163,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,213,163,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 40px 48px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+  }
+
+  .logo-mark {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--accent);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+    padding: 6px;
+    flex-shrink: 0;
+  }
+  .logo-mark span {
+    background: var(--accent);
+    opacity: 0.3;
+    transition: opacity 0.3s;
+  }
+  .logo-mark span:nth-child(1) { opacity: 1; }
+  .logo-mark span:nth-child(3) { opacity: 0.6; }
+
+  .header-text h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .header-text p {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+    letter-spacing: 0.05em;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    padding: 40px 48px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* PANEL LEFT */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .field-group {
+    margin-bottom: 24px;
+  }
+  .field-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    padding: 16px 20px;
+    outline: none;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: var(--accent); }
+
+  .hint {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .hint.error { color: #e07070; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 24px;
+  }
+  .info-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+  }
+  .info-box .val {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .info-box .lbl {
+    font-size: 9px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  .legend {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+  }
+
+  .btn-generate {
+    width: 100%;
+    margin-top: 28px;
+    padding: 16px;
+    background: var(--accent);
+    color: #0f0f0f;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-generate:hover { background: #f5e8c0; }
+  .btn-generate:active { transform: scale(0.99); }
+  .btn-generate:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+  .btn-download {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: none;
+  }
+  .btn-download:hover { background: rgba(232,213,163,0.08); }
+  .btn-download.visible { display: block; }
+
+  /* PANEL RIGHT - preview */
+  .preview-area {
+    position: relative;
+  }
+
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .preview-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .preview-label::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .preview-count {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .seq-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 400px;
+  }
+
+  .seq-table td {
+    border: 1px solid var(--border);
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 8px 6px;
+    min-width: 42px;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .seq-table td.q1 { color: #8ecfc2; }
+  .seq-table td.q2 { color: #8eb5cf; }
+  .seq-table td.q3 { color: #cf8eb5; }
+  .seq-table td.q4 { color: #cfb88e; }
+
+  .seq-table td.empty {
+    background: var(--bg);
+    color: transparent;
+  }
+
+  .seq-table td:hover:not(.empty) {
+    background: var(--surface2);
+  }
+
+  .empty-state {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: var(--muted);
+    gap: 12px;
+  }
+  .empty-state svg { opacity: 0.3; }
+  .empty-state p {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+  }
+
+  .step-badge {
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    font-size: 7px;
+    color: var(--muted);
+    opacity: 0.5;
+    line-height: 1;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; padding: 24px; }
+    header { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <span></span><span></span><span></span><span></span>
+  </div>
+  <div class="header-text">
+    <h1>SÉQUENCE DE SERRAGE EN QUINCONCE</h1>
+    <p>générateur de tableau — méthode quarts opposés</p>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <div class="panel-title">Paramètres</div>
+
+    <div class="field-group">
+      <label class="field-label" for="nbTiges">Nombre de tiges</label>
+      <input type="number" id="nbTiges" value="140" min="4" max="1000" step="4">
+      <div class="hint" id="hint">Doit être un multiple de 4</div>
+    </div>
+
+    <div class="info-grid" id="infoGrid" style="display:none">
+      <div class="info-box">
+        <div class="val" id="infoQ">—</div>
+        <div class="lbl">par quart</div>
+      </div>
+      <div class="info-box">
+        <div class="val" id="infoCols">—</div>
+        <div class="lbl">colonnes</div>
+      </div>
+      <div class="info-box">
+        <div class="val" id="infoRows">—</div>
+        <div class="lbl">lignes</div>
+      </div>
+      <div class="info-box">
+        <div class="val" id="infoRem">—</div>
+        <div class="lbl">reste</div>
+      </div>
+    </div>
+
+    <div class="legend" style="margin-top:20px">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#8ecfc2"></div>
+        <span id="leg1">Quart 1 — tiges 1 à N/4</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#8eb5cf"></div>
+        <span id="leg2">Quart 2 — tiges N/4+1 à N/2</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#cf8eb5"></div>
+        <span id="leg3">Quart 3 — tiges N/2+1 à 3N/4</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#cfb88e"></div>
+        <span id="leg4">Quart 4 — tiges 3N/4+1 à N</span>
+      </div>
+    </div>
+
+    <button class="btn-generate" id="btnGenerate" onclick="generate()">Générer la séquence</button>
+    <button class="btn-download" id="btnDownload" onclick="downloadDocx()">↓ Télécharger en .docx</button>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="preview-area">
+    <div class="preview-header">
+      <div class="preview-label">Aperçu</div>
+      <div class="preview-count" id="previewCount"></div>
+    </div>
+    <div id="previewContainer">
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="4" y="4" width="18" height="18" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="26" y="4" width="18" height="18" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="4" y="26" width="18" height="18" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="26" y="26" width="18" height="18" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <p>Entrez un nombre de tiges et cliquez sur Générer</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+let currentSeq = [];
+let currentN = 0;
+let currentCols = 0;
+
+function getQuarter(val, n) {
+  const q = n / 4;
+  if (val <= q) return 'q1';
+  if (val <= q * 2) return 'q2';
+  if (val <= q * 3) return 'q3';
+  return 'q4';
+}
+
+function buildSequence(n) {
+  const perQ = n / 4;
+  const q1 = Array.from({length: perQ}, (_, i) => i + 1);
+  const q2 = Array.from({length: perQ}, (_, i) => perQ + i + 1);
+  const q3 = Array.from({length: perQ}, (_, i) => 2 * perQ + i + 1);
+  const q4 = Array.from({length: perQ}, (_, i) => 3 * perQ + i + 1);
+  const seq = [];
+  for (let i = 0; i < perQ; i++) {
+    seq.push(q1[i], q3[i], q2[i], q4[i]);
+  }
+  return seq;
+}
+
+function calcCols(n) {
+  // Trouver un nombre de colonnes qui divise proprement ou quasi-proprement n
+  // Priorité aux multiples de 4 pour garder les groupes quinconce ensemble
+  // Cible: entre 16 et 28 colonnes, multiple de 4 de préférence
+  const candidates = [];
+  for (let c = 4; c <= Math.min(n, 32); c += 4) {
+    const rows = Math.ceil(n / c);
+    const rem = n % c;
+    candidates.push({ c, rows, rem });
+  }
+  // Chercher celui qui donne ~7-10 lignes avec rem=0 ou faible
+  const perfect = candidates.filter(x => x.rem === 0 && x.rows >= 4 && x.rows <= 15);
+  if (perfect.length) {
+    // Préférer celui qui donne le plus de colonnes (tableau plus large)
+    return perfect[perfect.length - 1].c;
+  }
+  // Sinon, multiple de 4 avec rem minimum
+  const best = candidates.filter(x => x.rows >= 4 && x.rows <= 15)
+    .sort((a, b) => a.rem - b.rem || b.c - a.c);
+  if (best.length) return best[0].c;
+  return 20;
+}
+
+function validate() {
+  const val = parseInt(document.getElementById('nbTiges').value);
+  const hint = document.getElementById('hint');
+  const btn = document.getElementById('btnGenerate');
+
+  if (!val || val < 4) {
+    hint.textContent = 'Minimum 4 tiges requis';
+    hint.className = 'hint error';
+    btn.disabled = true;
+    return false;
+  }
+  if (val % 4 !== 0) {
+    hint.textContent = `⚠ ${val} n'est pas un multiple de 4 — ajustement à ${Math.round(val/4)*4}`;
+    hint.className = 'hint error';
+    btn.disabled = false;
+    return true; // on permet quand même avec arrondi
+  }
+  hint.textContent = `Divisé en 4 quarts de ${val/4} tiges`;
+  hint.className = 'hint';
+  btn.disabled = false;
+  return true;
+}
+
+function generate() {
+  let rawN = parseInt(document.getElementById('nbTiges').value);
+  if (!rawN || rawN < 4) return;
+
+  // Arrondir au multiple de 4 le plus proche
+  const n = Math.round(rawN / 4) * 4;
+  if (n !== rawN) {
+    document.getElementById('nbTiges').value = n;
+  }
+
+  currentN = n;
+  currentSeq = buildSequence(n);
+  currentCols = calcCols(n);
+
+  const perQ = n / 4;
+  const rows = Math.ceil(n / currentCols);
+  const rem = n % currentCols;
+
+  // Update info boxes
+  const grid = document.getElementById('infoGrid');
+  grid.style.display = 'grid';
+  document.getElementById('infoQ').textContent = perQ;
+  document.getElementById('infoCols').textContent = currentCols;
+  document.getElementById('infoRows').textContent = rows;
+  document.getElementById('infoRem').textContent = rem === 0 ? '0 ✓' : rem;
+
+  // Update legend
+  document.getElementById('leg1').textContent = `Quart 1 — tiges 1 à ${perQ}`;
+  document.getElementById('leg2').textContent = `Quart 2 — tiges ${perQ+1} à ${2*perQ}`;
+  document.getElementById('leg3').textContent = `Quart 3 — tiges ${2*perQ+1} à ${3*perQ}`;
+  document.getElementById('leg4').textContent = `Quart 4 — tiges ${3*perQ+1} à ${n}`;
+
+  // Build table HTML
+  let html = '<div class="table-wrapper"><table class="seq-table">';
+  let step = 1;
+  for (let r = 0; r < currentSeq.length; r += currentCols) {
+    html += '<tr>';
+    for (let c = 0; c < currentCols; c++) {
+      const idx = r + c;
+      if (idx < currentSeq.length) {
+        const val = currentSeq[idx];
+        const qClass = getQuarter(val, n);
+        html += `<td class="${qClass}"><span class="step-badge">${step}</span>${val}</td>`;
+        step++;
+      } else {
+        html += `<td class="empty"></td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</table></div>';
+
+  document.getElementById('previewContainer').innerHTML = html;
+  document.getElementById('previewCount').textContent = `${n} tiges — ordre: Q1, Q3, Q2, Q4`;
+
+  const dlBtn = document.getElementById('btnDownload');
+  dlBtn.classList.add('visible');
+
+  // Animate
+  const tds = document.querySelectorAll('.seq-table td:not(.empty)');
+  tds.forEach((td, i) => {
+    td.style.opacity = '0';
+    td.style.transition = `opacity 0.015s ${i * 4}ms`;
+    setTimeout(() => { td.style.opacity = '1'; }, 10);
+  });
+}
+
+async function downloadDocx() {
+  if (!currentSeq.length) return;
+
+  const btn = document.getElementById('btnDownload');
+  btn.textContent = '⟳ Génération en cours…';
+  btn.disabled = true;
+
+  try {
+    const n = currentN;
+    const COLS = currentCols;
+    const perQ = n / 4;
+
+    const PAGE_W = 22390, LEFT_M = 1984, RIGHT_M = 3259;
+    const CELL_W = Math.floor((PAGE_W - LEFT_M - RIGHT_M) / COLS);
+
+    function qColor(v) {
+      if (v <= perQ) return '1D6B5F';
+      if (v <= 2*perQ) return '1A4F7A';
+      if (v <= 3*perQ) return '6B1A4F';
+      return '7A5020';
+    }
+
+    function xmlEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function makeCell(val) {
+      const txt = val != null ? xmlEsc(val) : '';
+      const col = val != null ? qColor(val) : 'FFFFFF';
+      return `<w:tc>
+        <w:tcPr>
+          <w:tcW w:w="${CELL_W}" w:type="dxa"/>
+          <w:tcMar><w:top w:w="60" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>
+        </w:tcPr>
+        <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+          <w:r><w:rPr><w:color w:val="${col}"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>${txt}</w:t></w:r>
+        </w:p></w:tc>`;
+    }
+
+    function makeBorder() {
+      const b = `<w:sz w:val="4"/><w:space w:val="0"/><w:color w:val="000000"/>`;
+      return `<w:tblBorders>
+        <w:top w:val="single" ${b}/><w:left w:val="single" ${b}/>
+        <w:bottom w:val="single" ${b}/><w:right w:val="single" ${b}/>
+        <w:insideH w:val="single" ${b}/><w:insideV w:val="single" ${b}/>
+      </w:tblBorders>`;
+    }
+
+    let tableXml = `<w:tbl><w:tblPr>
+      <w:tblW w:w="${COLS * CELL_W}" w:type="dxa"/>
+      ${makeBorder()}
+    </w:tblPr>
+    <w:tblGrid>${Array(COLS).fill(`<w:gridCol w:w="${CELL_W}"/>`).join('')}</w:tblGrid>`;
+
+    for (let r = 0; r < currentSeq.length; r += COLS) {
+      tableXml += `<w:tr><w:trPr><w:trHeight w:val="480" w:hRule="atLeast"/></w:trPr>`;
+      for (let c = 0; c < COLS; c++) {
+        const idx = r + c;
+        tableXml += makeCell(idx < currentSeq.length ? currentSeq[idx] : null);
+      }
+      tableXml += `</w:tr>`;
+    }
+    tableXml += `</w:tbl>`;
+
+    function para(text, sz, bold, color) {
+      return `<w:p><w:r><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color||'000000'}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${xmlEsc(text)}</w:t></w:r></w:p>`;
+    }
+
+    const legendLine = `<w:p>
+      <w:r><w:rPr><w:color w:val="1D6B5F"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">Quart 1 : 1–${perQ}    </w:t></w:r>
+      <w:r><w:rPr><w:color w:val="1A4F7A"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">Quart 2 : ${perQ+1}–${2*perQ}    </w:t></w:r>
+      <w:r><w:rPr><w:color w:val="6B1A4F"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">Quart 3 : ${2*perQ+1}–${3*perQ}    </w:t></w:r>
+      <w:r><w:rPr><w:color w:val="7A5020"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">Quart 4 : ${3*perQ+1}–${n}</w:t></w:r>
+    </w:p>`;
+
+    const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:sectPr>
+    <w:pgSz w:w="${PAGE_W}" w:h="31660"/>
+    <w:pgMar w:top="920" w:right="${RIGHT_M}" w:bottom="1400" w:left="${LEFT_M}" w:header="720" w:footer="720" w:gutter="0"/>
+  </w:sectPr>
+  ${para('Séquence de serrage en quinconce', 36, true, '000000')}
+  ${para(`${n} tiges — ordre de serrage : Q1, Q3, Q2, Q4`, 22, false, '666666')}
+  ${legendLine}
+  <w:p/>
+  ${tableXml}
+</w:body>
+</w:document>`;
+
+    const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+    const wordRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`;
+
+    const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', contentTypesXml);
+    zip.file('_rels/.rels', relsXml);
+    zip.file('word/document.xml', docXml);
+    zip.file('word/_rels/document.xml.rels', wordRelsXml);
+
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Séquence_serrage_${n}_tiges.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+  } catch(e) {
+    console.error(e);
+    alert('Erreur lors de la génération : ' + e.message);
+  }
+
+  btn.textContent = '↓ Télécharger en .docx';
+  btn.disabled = false;
+}
+
+// Live validation
+document.getElementById('nbTiges').addEventListener('input', validate);
+document.getElementById('nbTiges').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generate();
+});
+
+// Init
+validate();
+</script>
+</body>
+</html>
